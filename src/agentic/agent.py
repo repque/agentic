@@ -11,7 +11,7 @@ from langgraph.graph import StateGraph, START, END
 from langgraph.checkpoint.memory import MemorySaver
 
 from .models import AgentState, Message, CategoryRequirement, HandlerResponse
-from .classification import check_field_present
+from .classification import classify_message_with_llm, check_requirements_with_llm, check_field_present
 from .tools import get_tools_by_names, get_tools_by_names_async, load_mcp_tools
 
 
@@ -200,11 +200,23 @@ class Agent:
         
         # Classify if categories are defined
         if self.get_classification_categories():
-            state = self._classify_message(state)
+            # Use LLM for intelligent classification
+            state.category = await classify_message_with_llm(
+                self.llm, 
+                last_message, 
+                self.get_classification_categories()
+            )
             
-            # Check requirements
-            if not self._check_requirements(state):
-                missing = ", ".join(state.missing_requirements)
+            # Check requirements using LLM
+            requirements_met, missing_fields = await check_requirements_with_llm(
+                self.llm,
+                last_message,
+                state.category,
+                self.get_category_requirements()
+            )
+            
+            if not requirements_met:
+                missing = ", ".join(missing_fields)
                 state.messages.append(Message(role="assistant", content=f"Need: {missing}"))
                 return state
             
@@ -226,37 +238,8 @@ class Agent:
             
         return state
 
-    def _classify_message(self, state: AgentState) -> AgentState:
-        """Simple message classification."""
-        message = state.messages[-1].content
-        categories = self.get_classification_categories()
-        
-        # Simple keyword-based classification (could use LLM if needed)
-        for category in categories:
-            if category.lower() in message.lower():
-                state.category = category
-                return state
-        
-        state.category = "default"
-        return state
-    
-    def _check_requirements(self, state: AgentState) -> bool:
-        """Check if required fields are present."""
-        requirements = self.get_category_requirements()
-        message = state.messages[-1].content.lower()
-        
-        for req in requirements:
-            if req.category == state.category:
-                missing = []
-                for field in req.required_fields:
-                    if not check_field_present(message, field):
-                        missing.append(field)
-                
-                if missing:
-                    state.missing_requirements = missing
-                    return False
-        
-        return True
+    # Removed: _classify_message and _check_requirements methods
+    # Classification now handled by LLM functions in _process_message
     
     async def _generate_response(self, message: str) -> str:
         """Generate LLM response with context."""

@@ -88,8 +88,8 @@ response = await agent.chat("I need help with login issues", "user123")
 ### Automatic Workflow
 
 1. **User Input** → Always classified and validated
-2. **Classification** → LLM categorizes into your defined categories  
-3. **Requirements Check** → Validates required fields are present
+2. **LLM Classification** → Intelligent categorization into your defined categories  
+3. **LLM Requirements Check** → Smart validation of required information
 4. **Routing** → Custom handler OR default flow with tools + knowledge
 5. **Confidence Check** → Quality scoring with automatic escalation
 6. **Response** → User gets helpful response
@@ -97,7 +97,7 @@ response = await agent.chat("I need help with login issues", "user123")
 ### What You Get Automatically
 
 - ✅ **All routing logic** (diamond decision points in flowchart)
-- ✅ **Classification and completeness checking**
+- ✅ **Intelligent LLM-based classification and requirements validation**
 - ✅ **Confidence scoring and thresholding**  
 - ✅ **State management and persistence**
 - ✅ **Multi-user isolation**
@@ -195,8 +195,8 @@ assert len(response) > 0
 ### Complete Flow (Requirements Met)
 ```
 Input: "Review https://github.com/repo/pr/123 for security scope"
-→ Classification: "ReviewRequest"
-→ Requirements: ✅ URL and scope present  
+→ LLM Classification: "ReviewRequest" (intelligent understanding)
+→ LLM Requirements: ✅ URL and scope detected  
 → Execute: handle_review()
 → Output: "Review JIRA-456 created"
 ```
@@ -204,17 +204,29 @@ Input: "Review https://github.com/repo/pr/123 for security scope"
 ### Missing Requirements
 ```
 Input: "Please review my code"
-→ Classification: "ReviewRequest"
-→ Requirements: ❌ Missing URL and scope
+→ LLM Classification: "ReviewRequest" (understands intent)
+→ LLM Requirements: ❌ Missing URL and scope detected
 → Output: "Need: url, scope"
 ```
 
 ### Default Flow
 ```
 Input: "What's our vacation policy?"
-→ Classification: "Query" (no custom handler)
-→ Default Flow: Knowledge + LLM
+→ LLM Classification: "Query" (no custom handler)
+→ Default Flow: Knowledge + LLM + Tools
 → Confidence: High → Return response
+```
+
+### Intelligent Classification Examples
+```
+Input: "Can someone check my PR?"
+→ LLM Classification: "ReviewRequest" (understands "check" = "review")
+
+Input: "I need approval for the marketing budget"  
+→ LLM Classification: "ApprovalRequest" (understands context)
+
+Input: "Help me understand the deploy process"
+→ LLM Classification: "Query" (informational request)
 ```
 
 ### Low Confidence Escalation
