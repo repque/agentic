@@ -393,10 +393,6 @@ Building production AI agents typically requires:
 3. **One Handler Per Category** - No complex conflict resolution
 4. **Escape Hatch Available** - Drop to LangGraph for complex workflows
 
-## Contributing
-
-We welcome contributions! See our development plan in `TODO.md`.
-
 ## License
 
-MIT License - see LICENSE file for details.
+Apache License 2.0 - see LICENSE file for details.
