@@ -92,64 +92,46 @@ async def check_requirements_with_llm(
     if not category_reqs or not category_reqs.required_fields:
         return True, []
     
-    # Use basic field detection for common patterns, LLM for complex cases
-    missing_fields = []
+    # Use LLM to analyze all required fields at once
+    fields_str = ", ".join(category_reqs.required_fields)
     
-    for field in category_reqs.required_fields:
-        if not await _check_field_present_smart(llm, message, field):
-            missing_fields.append(field)
-    
-    return len(missing_fields) == 0, missing_fields
+    analysis_prompt = f"""Analyze the following message to determine which required information is present or missing.
 
-
-async def _check_field_present_smart(llm: Any, message: str, field: str) -> bool:
-    """
-    Smart field detection using patterns + LLM fallback.
-    
-    Uses fast pattern matching for common fields (URL, amount) and
-    LLM analysis for more complex or ambiguous fields.
-    """
-    field_lower = field.lower()
-    message_lower = message.lower()
-    
-    # Fast pattern matching for common fields
-    if field_lower in ["url", "link", "repository", "repo"]:
-        return bool(re.search(r"https?://[^\s]+", message))
-    
-    if field_lower in ["amount", "cost", "price", "budget"]:
-        return bool(re.search(r"[\$€£¥][\d,.]+|\b\d+\s*(?:dollars?|euros?|pounds?|yen|usd|eur|gbp)\b", message, re.IGNORECASE))
-    
-    if field_lower in ["email", "email_address"]:
-        return bool(re.search(r"\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b", message))
-    
-    if field_lower in ["phone", "phone_number", "telephone"]:
-        return bool(re.search(r"[\+]?[\d\s\-\(\)]{10,}", message))
-    
-    # Simple word presence for basic fields
-    if field_lower in message_lower:
-        return True
-    
-    # For complex fields, use LLM analysis
-    try:
-        analysis_prompt = f"""Does the following message contain information about "{field}"?
-
+Required fields: {fields_str}
 Message: "{message}"
 
 Instructions:
-- Answer with only "YES" or "NO"
-- YES if the message contains any information related to {field}
-- NO if the message does not contain information about {field}
+- For each required field, determine if the message contains that information
+- List only the MISSING fields (fields not present in the message)
+- If all fields are present, respond with "NONE"
+- Respond with missing field names separated by commas, or "NONE"
 
-Answer:"""
+Missing fields:"""
 
+    try:
         response = await llm.ainvoke(analysis_prompt)
-        result = response.content.strip().upper() if hasattr(response, 'content') else str(response).strip().upper()
+        result = response.content.strip() if hasattr(response, 'content') else str(response).strip()
         
-        return result == "YES"
+        if result.upper() == "NONE":
+            return True, []
         
-    except Exception:
-        # If LLM analysis fails, fall back to simple word presence
-        return field_lower in message_lower
+        # Parse missing fields
+        missing_fields = [field.strip() for field in result.split(",") if field.strip()]
+        
+        # Validate that returned fields are actually in our requirements
+        valid_missing = []
+        for field in missing_fields:
+            if field in category_reqs.required_fields:
+                valid_missing.append(field)
+        
+        return len(valid_missing) == 0, valid_missing
+        
+    except Exception as e:
+        import logging
+        logging.warning(f"LLM requirements check failed: {e}")
+        
+        # Fallback: assume all fields are missing for safety
+        return False, category_reqs.required_fields
 
 
 def check_field_present(message: str, field: str) -> bool:
