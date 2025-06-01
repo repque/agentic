@@ -275,19 +275,23 @@ agent = MyAgent()
   }
 }
 
-# Custom tools (when MCP tools aren't sufficient)
-from agentic.tools import BaseTool
+# Custom tools (if needed beyond MCP)
+# Most use cases are covered by MCP servers:
+# - Filesystem operations: @modelcontextprotocol/server-filesystem  
+# - Web scraping: @modelcontextprotocol/server-web
+# - Git operations: @modelcontextprotocol/server-git
+# - Database: @modelcontextprotocol/server-postgres
+# - And many more in the MCP ecosystem
 
-class CustomTool(BaseTool):
-    def __init__(self):
-        super().__init__("custom_tool", "Custom business logic")
-    
-    def execute(self, **kwargs) -> str:
-        # Your custom logic
-        return "Custom result"
+# For specialized business logic, implement custom handlers:
+def my_custom_handler(state):
+    # Your business logic here
+    result = my_business_function(state.messages[-1].content)
+    return HandlerResponse(
+        messages=[Message(role="assistant", content=result)]
+    )
 
-# Register custom tool
-agent.tool_registry.register(CustomTool())
+agent.register_handler("CustomCategory", my_custom_handler)
 ```
 
 ### Memory & Multi-User

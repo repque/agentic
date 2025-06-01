@@ -62,3 +62,7 @@ Thumbs.db
 
 # Claude settings
 .claude/
+
+# Development docs (keep local only)
+TODO.md
+DESIGN.md
