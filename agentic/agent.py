@@ -273,11 +273,9 @@ class Agent:
         
         # Check if this is a new conversation thread (different topic/issue)
         if await self._is_new_conversation_thread(state):
-            # Start fresh for new conversation thread
+            # Reset classification state for new conversation thread, but preserve message history
             state.missing_requirements = []
-            # Keep only the current message for new thread
-            current_msg = state.messages[-1]
-            state.messages = [current_msg]
+            state.category = None  # Will be reclassified
         else:
             # Reset requirements for continuing conversation
             state.missing_requirements = []
@@ -443,10 +441,11 @@ Recent conversation context: {recent_context}
 Current message: {current_message}
 
 Rules:
-- If the current message introduces a completely different problem/issue/topic, respond "NEW"
-- If the current message continues discussing the same problem/issue, respond "CONTINUE"
-- Examples of NEW: switching from computer issues to AC issues, from billing to technical support
-- Examples of CONTINUE: providing more details, asking follow-up questions about same issue
+- If the current message introduces a COMPLETELY DIFFERENT problem/service area, respond "NEW"
+- If the current message continues the same issue, provides requested information, or gives more details, respond "CONTINUE"
+- Be CONSERVATIVE - when in doubt, choose "CONTINUE"
+- Examples of NEW: switching from billing issues to technical support, from AC problems to computer problems
+- Examples of CONTINUE: providing account numbers, describing symptoms, giving error details, clarifying previous statements
 
 Respond with only "NEW" or "CONTINUE":"""
 
