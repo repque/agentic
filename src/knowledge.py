@@ -23,6 +23,8 @@ from typing import List, Dict, Any, Optional, Protocol
 from abc import ABC, abstractmethod
 import os
 import json
+import hashlib
+import time
 from pathlib import Path
 
 
@@ -226,6 +228,229 @@ class SimpleRetriever:
         return [content for _, content in scored_content[:max_results]]
 
 
+class EmbeddingRetriever:
+    """
+    Embedding-based similarity search retriever using vector database.
+    
+    Uses OpenAI embeddings and Chroma vector database for high-quality
+    semantic similarity search. Includes change detection for efficient
+    re-vectorization.
+    """
+    
+    def __init__(self, 
+                 collection_name: str = "knowledge",
+                 persist_directory: str = ".chroma_db",
+                 embedding_model: str = "text-embedding-3-small"):
+        self.collection_name = collection_name
+        self.persist_directory = persist_directory
+        self.embedding_model = embedding_model
+        self.content_hashes: Dict[str, str] = {}
+        self.hash_file = os.path.join(persist_directory, "content_hashes.json")
+        
+        # Initialize components
+        self._init_client()
+        self._load_content_hashes()
+    
+    def _init_client(self):
+        """Initialize Chroma client and OpenAI embeddings."""
+        try:
+            import chromadb
+            from chromadb.config import Settings
+            import openai
+            
+            # Create persist directory
+            os.makedirs(self.persist_directory, exist_ok=True)
+            
+            # Initialize Chroma client
+            self.chroma_client = chromadb.PersistentClient(
+                path=self.persist_directory,
+                settings=Settings(
+                    anonymized_telemetry=False,
+                    allow_reset=True
+                )
+            )
+            
+            # Get or create collection
+            try:
+                self.collection = self.chroma_client.get_collection(name=self.collection_name)
+            except:
+                self.collection = self.chroma_client.create_collection(
+                    name=self.collection_name,
+                    metadata={"description": "Knowledge base embeddings"}
+                )
+            
+            # Initialize OpenAI client
+            self.openai_client = openai.OpenAI()
+            
+        except ImportError as e:
+            raise ImportError(
+                f"Missing dependencies for embedding retrieval: {e}. "
+                "Install with: pip install chromadb openai"
+            )
+    
+    def _load_content_hashes(self):
+        """Load content hashes from disk for change detection."""
+        if os.path.exists(self.hash_file):
+            try:
+                with open(self.hash_file, 'r') as f:
+                    self.content_hashes = json.load(f)
+            except:
+                self.content_hashes = {}
+    
+    def _save_content_hashes(self):
+        """Save content hashes to disk."""
+        os.makedirs(os.path.dirname(self.hash_file), exist_ok=True)
+        with open(self.hash_file, 'w') as f:
+            json.dump(self.content_hashes, f)
+    
+    def _get_content_hash(self, content: Dict[str, Any]) -> str:
+        """Generate hash for content to detect changes."""
+        content_str = content.get('content', '') + str(content.get('source', ''))
+        return hashlib.md5(content_str.encode()).hexdigest()
+    
+    def _chunk_content(self, content: str, chunk_size: int = 500, overlap: int = 50) -> List[str]:
+        """Split content into overlapping chunks for better embedding."""
+        if len(content) <= chunk_size:
+            return [content]
+        
+        chunks = []
+        start = 0
+        while start < len(content):
+            end = start + chunk_size
+            chunk = content[start:end]
+            
+            # Try to break at sentence boundary
+            if end < len(content):
+                last_period = chunk.rfind('.')
+                last_newline = chunk.rfind('\n')
+                break_point = max(last_period, last_newline)
+                if break_point > start + chunk_size // 2:
+                    chunk = content[start:break_point + 1]
+                    end = break_point + 1
+            
+            chunks.append(chunk.strip())
+            start = end - overlap
+            
+            if start >= len(content):
+                break
+        
+        return [chunk for chunk in chunks if chunk.strip()]
+    
+    def _get_embeddings(self, texts: List[str]) -> List[List[float]]:
+        """Get embeddings for list of texts using OpenAI."""
+        try:
+            response = self.openai_client.embeddings.create(
+                model=self.embedding_model,
+                input=texts,
+                encoding_format="float"
+            )
+            return [embedding.embedding for embedding in response.data]
+        except Exception as e:
+            print(f"Warning: Failed to get embeddings: {e}")
+            return []
+    
+    def add_content(self, content: Dict[str, Any]) -> None:
+        """Add content to the vector database with change detection."""
+        if content.get('error') or not content.get('content'):
+            return
+        
+        source = content.get('source', 'unknown')
+        content_text = content.get('content', '')
+        content_hash = self._get_content_hash(content)
+        
+        # Check if content has changed
+        if source in self.content_hashes and self.content_hashes[source] == content_hash:
+            # Content unchanged, skip re-vectorization
+            return
+        
+        # Remove old embeddings for this source
+        try:
+            existing_ids = self.collection.get(where={"source": source})['ids']
+            if existing_ids:
+                self.collection.delete(ids=existing_ids)
+        except:
+            pass  # Source not found, continue
+        
+        # Chunk the content
+        chunks = self._chunk_content(content_text)
+        if not chunks:
+            return
+        
+        # Get embeddings
+        embeddings = self._get_embeddings(chunks)
+        if not embeddings:
+            return
+        
+        # Create IDs and metadata
+        timestamp = str(int(time.time()))
+        ids = [f"{source}_{timestamp}_{i}" for i in range(len(chunks))]
+        metadatas = [{
+            "source": source,
+            "chunk_index": i,
+            "total_chunks": len(chunks),
+            "content_type": content.get('type', 'unknown'),
+            "timestamp": timestamp
+        } for i in range(len(chunks))]
+        
+        # Add to collection
+        try:
+            self.collection.add(
+                embeddings=embeddings,
+                documents=chunks,
+                metadatas=metadatas,
+                ids=ids
+            )
+            
+            # Update hash
+            self.content_hashes[source] = content_hash
+            self._save_content_hashes()
+            
+        except Exception as e:
+            print(f"Warning: Failed to add content to vector database: {e}")
+    
+    def retrieve(self, query: str, max_results: int = 5) -> List[Dict[str, Any]]:
+        """Retrieve relevant content using similarity search."""
+        if not query.strip():
+            return []
+        
+        try:
+            # Get query embedding
+            query_embeddings = self._get_embeddings([query])
+            if not query_embeddings:
+                return []
+            
+            # Search for similar content
+            results = self.collection.query(
+                query_embeddings=query_embeddings,
+                n_results=min(max_results, 10),  # Cap at 10 for performance
+                include=['documents', 'metadatas', 'distances']
+            )
+            
+            if not results['documents'] or not results['documents'][0]:
+                return []
+            
+            # Format results
+            formatted_results = []
+            for i, (doc, metadata, distance) in enumerate(zip(
+                results['documents'][0],
+                results['metadatas'][0], 
+                results['distances'][0]
+            )):
+                formatted_results.append({
+                    'source': metadata.get('source', 'unknown'),
+                    'content': doc,
+                    'type': metadata.get('content_type', 'unknown'),
+                    'similarity_score': 1.0 - distance,  # Convert distance to similarity
+                    'chunk_info': f"{metadata.get('chunk_index', 0) + 1}/{metadata.get('total_chunks', 1)}"
+                })
+            
+            return formatted_results
+            
+        except Exception as e:
+            print(f"Warning: Similarity search failed: {e}")
+            return []
+
+
 class KnowledgeManager:
     """
     Main knowledge management system - framework agnostic.
@@ -357,9 +582,57 @@ class KnowledgeManager:
         return "Available Knowledge: " + ", ".join(summaries) if summaries else ""
 
 
-# Convenience function for quick setup
+# Convenience functions for quick setup
 def create_default_knowledge_manager() -> KnowledgeManager:
-    """Create a KnowledgeManager with default loaders and retriever."""
+    """
+    Create a KnowledgeManager with default loaders and retriever.
+    
+    Uses EmbeddingRetriever for semantic similarity search by default,
+    with fallback to SimpleRetriever if dependencies are missing.
+    """
+    km = KnowledgeManager()
+    km.add_loader(FileLoader())
+    km.add_loader(URLLoader())
+    
+    # Try to use embedding-based retriever first
+    try:
+        km.set_retriever(EmbeddingRetriever())
+    except ImportError:
+        # Fallback to simple keyword-based retriever
+        print("Note: Using keyword-based retrieval. For better semantic search, install: pip install chromadb openai")
+        km.set_retriever(SimpleRetriever())
+    
+    return km
+
+def create_embedding_knowledge_manager(
+    persist_directory: str = ".chroma_db",
+    embedding_model: str = "text-embedding-3-small"
+) -> KnowledgeManager:
+    """
+    Create a KnowledgeManager with explicit embedding-based retrieval.
+    
+    Args:
+        persist_directory: Directory to store vector database
+        embedding_model: OpenAI embedding model to use
+    
+    Returns:
+        KnowledgeManager configured with EmbeddingRetriever
+    """
+    km = KnowledgeManager()
+    km.add_loader(FileLoader())
+    km.add_loader(URLLoader())
+    km.set_retriever(EmbeddingRetriever(
+        persist_directory=persist_directory,
+        embedding_model=embedding_model
+    ))
+    return km
+
+def create_simple_knowledge_manager() -> KnowledgeManager:
+    """
+    Create a KnowledgeManager with simple keyword-based retrieval.
+    
+    Use this if you prefer keyword matching or don't want embedding dependencies.
+    """
     km = KnowledgeManager()
     km.add_loader(FileLoader())
     km.add_loader(URLLoader())

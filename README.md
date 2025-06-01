@@ -29,8 +29,9 @@ class MyAgent(Agent):
 
 - **LangGraph Foundation** - Built on proven enterprise orchestration  
 - **LLM-Based Classification** - Intelligent categorization and validation using your LLM
+- **Semantic Knowledge Search** - Embedding-based similarity search with vector storage
 - **Framework-Agnostic Knowledge** - Reusable KnowledgeManager for any GenAI framework
-- **Context-Aware Retrieval** - Smart knowledge injection based on user queries
+- **Automatic Change Detection** - Smart re-vectorization when knowledge updates
 - **Simple Conflict Resolution** - One handler per category, no complexity  
 - **Automatic Memory** - Conversation persistence with zero config  
 - **Confidence Scoring** - Quality control with automatic escalation  
@@ -43,10 +44,17 @@ class MyAgent(Agent):
 ### Installation
 
 ```bash
+# Basic installation
 pip install agentic
 
-# For MCP tool support (recommended)
-pip install mcp
+# For semantic knowledge search (recommended)
+pip install agentic[embeddings]
+
+# For MCP tool support
+pip install agentic[mcp]
+
+# Everything included
+pip install agentic[all]
 ```
 
 ### Basic Agent
