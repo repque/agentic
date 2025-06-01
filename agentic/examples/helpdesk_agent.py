@@ -68,8 +68,11 @@ class HelpDeskAgent(Agent):
     def get_knowledge(self) -> list[str]:
         """Knowledge sources for the help desk."""
         return [
-            "/Users/repque/dev/src/agentic/company_policies.md",
-            "/Users/repque/dev/src/agentic/billing_procedures.md"
+            # Add your knowledge sources here:
+            # "./docs/company_policies.md",
+            # "./docs/billing_procedures.md", 
+            # "./docs/troubleshooting_guides/",
+            # "https://api.company.com/docs"
         ]
     
     def handle_tech_support(self, state: AgentState) -> HandlerResponse:

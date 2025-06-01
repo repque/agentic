@@ -24,27 +24,32 @@ async def demo_knowledge_integration():
     print("\n📚 Standalone Knowledge Manager:")
     km = create_default_knowledge_manager()
     
-    # Load sources
+    # Demo with example sources (you can replace with your own)
     sources = [
-        "/Users/repque/dev/src/agentic/company_policies.md",
-        "/Users/repque/dev/src/agentic/billing_procedures.md"
+        "./README.md",  # Use existing file as demo
+        "./docs/",      # Example directory
     ]
     
     stats = km.load_sources(sources)
     print(f"✅ Loaded {stats['loaded_successfully']}/{stats['total_sources']} sources")
+    if stats['errors']:
+        print(f"⚠️  Some sources failed to load (this is normal for demo): {len(stats['errors'])} errors")
     
-    # Query for billing info
-    billing_query = "What payment methods are supported?"
-    relevant = km.retrieve_for_query(billing_query, max_results=1)
-    print(f"\n🔍 Query: '{billing_query}'")
-    print(f"📋 Retrieved: {len(relevant.split())} words of relevant content")
-    print(f"📄 Content preview: {relevant[:150]}...")
+    # Query for framework info
+    query = "What is this framework about?"
+    relevant = km.retrieve_for_query(query, max_results=1)
+    print(f"\n🔍 Query: '{query}'")
+    if relevant:
+        print(f"📋 Retrieved: {len(relevant.split())} words of relevant content")
+        print(f"📄 Content preview: {relevant[:150]}...")
+    else:
+        print("📋 No relevant content found (normal for demo)")
     
     # 2. Framework Integration Examples - All use the same simple API
     print(f"\n🔧 Framework-Agnostic Usage:")
     
     # Any framework can use the same API
-    knowledge_for_any_framework = km.retrieve_for_query(billing_query, max_results=2)
+    knowledge_for_any_framework = km.retrieve_for_query(query, max_results=2)
     print(f"📦 Universal format: {len(knowledge_for_any_framework)} characters")
     
     # Raw content access for frameworks that need it
@@ -52,24 +57,22 @@ async def demo_knowledge_integration():
     print(f"📦 Raw content: {len(all_content)} documents")
     
     # Different max_results for different needs
-    brief_knowledge = km.retrieve_for_query(billing_query, max_results=1)
-    detailed_knowledge = km.retrieve_for_query(billing_query, max_results=5)
+    brief_knowledge = km.retrieve_for_query(query, max_results=1)
+    detailed_knowledge = km.retrieve_for_query(query, max_results=5)
     print(f"📦 Brief: {len(brief_knowledge)} chars, Detailed: {len(detailed_knowledge)} chars")
     
     # 3. Agent Integration (Our Framework)
     print(f"\n🤖 Agentic Framework Integration:")
     agent = HelpDeskAgent()
     
-    # Test knowledge-enhanced response
-    response = await agent.chat("What are your accepted payment methods?", "demo_user")
+    # Test agent response (no knowledge sources configured in this demo)
+    response = await agent.chat("What types of issues can you help with?", "demo_user")
     print(f"💬 Agent response length: {len(response)} characters")
     print(f"📝 Response preview: {response[:200]}...")
     
-    # Show knowledge was used
-    if "Credit Cards" in response or "PayPal" in response or "ACH" in response:
-        print("✅ Knowledge successfully integrated into response!")
-    else:
-        print("❌ Knowledge not detected in response")
+    # Note about knowledge integration
+    print("📝 Note: Agent has no knowledge sources configured in this demo")
+    print("📝 To see knowledge integration, configure get_knowledge() in your agent")
     
     print(f"\n🎯 Framework-Agnostic Benefits:")
     print("• Universal API: Same retrieve_for_query() works with any framework")
