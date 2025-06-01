@@ -84,8 +84,6 @@ response = await agent.chat("I need help with login issues", "user123")
 
 ## How It Works
 
-![Workflow Diagram](workflow-diagram.png)
-
 ### Automatic Workflow
 
 1. **User Input** → Always classified and validated
@@ -97,7 +95,7 @@ response = await agent.chat("I need help with login issues", "user123")
 
 ### What You Get Automatically
 
-- **All routing logic** (diamond decision points in flowchart)
+- **All routing logic** (automatic decision making)
 - **Intelligent LLM-based classification and requirements validation**
 - **Confidence scoring and thresholding**  
 - **State management and persistence**
