@@ -13,6 +13,8 @@ from langgraph.checkpoint.memory import MemorySaver
 from .models import AgentState, Message, CategoryRequirement, HandlerResponse
 from .classification import classify_message_with_llm, check_requirements_with_llm
 from .tools import get_tools_by_names, get_tools_by_names_async, load_mcp_tools
+from .system_prompts import CONVERSATION_THREAD_PROMPT, DEFAULT_RESPONSE_PROMPT
+from .knowledge import create_default_knowledge_manager
 
 
 class Agent:
@@ -45,6 +47,10 @@ class Agent:
         # Initialize LLM and tools
         self.llm = self._create_llm(llm)
         self.available_tools = get_tools_by_names(self.tools) if self.tools else load_mcp_tools()
+
+        # Initialize knowledge management system
+        self.knowledge_manager = create_default_knowledge_manager()
+        self._load_knowledge_sources()
 
         # Build LangGraph workflow
         self._workflow = None
@@ -272,12 +278,14 @@ class Agent:
         last_message = state.messages[-1].content
         
         # Check if this is a new conversation thread (different topic/issue)
+        # Only reset state for truly different problem domains, not natural topic shifts
         if await self._is_new_conversation_thread(state):
             # Reset classification state for new conversation thread, but preserve message history
             state.missing_requirements = []
-            state.category = None  # Will be reclassified
+            # Reset requirement attempts when switching to truly different topics
+            state.requirement_attempts = {}
         else:
-            # Reset requirements for continuing conversation
+            # Reset requirements for continuing conversation (but keep attempt counts)
             state.missing_requirements = []
         
         if not self.get_classification_categories():
@@ -308,18 +316,21 @@ class Agent:
         state.missing_requirements = missing_fields
         
         if not requirements_met:
-            # Count how many times we've asked for requirements by counting assistant messages
-            # that are asking for information (not just containing field names)
-            requirement_requests = 0
-            for msg in state.messages:
-                if msg.role == "assistant":
-                    # Check if the message is asking for information (contains question words)
-                    content_lower = msg.content.lower()
-                    if any(word in content_lower for word in ["could you", "please tell", "can you provide", "what", "which", "need"]):
-                        requirement_requests += 1
+            # Simple session-based tracking: track attempts per category per user
+            session_key = f"{state.workflow_step}_{state.category}_requirements"
             
-            # If we've asked 2+ times, escalate instead of asking again
-            if requirement_requests >= 2:
+            # Initialize attempt tracking if not exists
+            if not hasattr(state, 'requirement_attempts'):
+                state.requirement_attempts = {}
+            
+            # Increment attempts for this category
+            if session_key not in state.requirement_attempts:
+                state.requirement_attempts[session_key] = 0
+            state.requirement_attempts[session_key] += 1
+            
+            # Escalate if we've tried too many times (simple counter)
+            max_attempts = 2
+            if state.requirement_attempts[session_key] > max_attempts:
                 state.needs_escalation = True
                 escalation_response = self.handle_low_confidence(state)
                 state.messages.extend(escalation_response.messages)
@@ -435,19 +446,10 @@ class Agent:
         # Use LLM to determine if this is a new topic
         recent_context = " | ".join(recent_messages)
         
-        prompt = f"""Determine if the current message starts a NEW conversation topic or continues the EXISTING topic.
-
-Recent conversation context: {recent_context}
-Current message: {current_message}
-
-Rules:
-- If the current message introduces a COMPLETELY DIFFERENT problem/service area, respond "NEW"
-- If the current message continues the same issue, provides requested information, or gives more details, respond "CONTINUE"
-- Be CONSERVATIVE - when in doubt, choose "CONTINUE"
-- Examples of NEW: switching from billing issues to technical support, from AC problems to computer problems
-- Examples of CONTINUE: providing account numbers, describing symptoms, giving error details, clarifying previous statements
-
-Respond with only "NEW" or "CONTINUE":"""
+        prompt = CONVERSATION_THREAD_PROMPT.format(
+            recent_context=recent_context,
+            current_message=current_message
+        )
 
         try:
             response = await self.llm.ainvoke(prompt)
@@ -458,31 +460,48 @@ Respond with only "NEW" or "CONTINUE":"""
             return False
     
     async def _generate_response(self, messages: list) -> str:
-        """Generate LLM response with full conversation context."""
-        prompt = self.get_personality()
+        """Generate LLM response with full conversation context and knowledge retrieval."""
+        personality = self.get_personality()
         
-        # Add knowledge
-        if self.get_knowledge():
-            prompt += f"\n\nKnowledge: {', '.join(self.get_knowledge())}"
+        # Get current user query for knowledge retrieval
+        current_query = ""
+        if messages:
+            last_msg = messages[-1]
+            if hasattr(last_msg, 'content'):
+                current_query = last_msg.content
+            elif isinstance(last_msg, dict):
+                current_query = last_msg.get('content', '')
         
-        # Add tools
+        # Build knowledge section with context-aware retrieval
+        knowledge_section = ""
+        if current_query:
+            relevant_knowledge = self.knowledge_manager.retrieve_for_query(current_query, max_results=3)
+            if relevant_knowledge:
+                knowledge_section = f"\n\nRelevant Knowledge:\n{relevant_knowledge}"
+        
+        # Build tools section
+        tools_section = ""
         if self.available_tools:
             tools = ", ".join([t['name'] for t in self.available_tools])
-            prompt += f"\n\nTools: {tools}"
+            tools_section = f"\n\nTools: {tools}"
         
-        # Add conversation history with emphasis on context awareness
-        prompt += "\n\nConversation history (use this context to provide relevant responses):"
+        # Build conversation history
+        conversation_history = ""
         for msg in messages:
             if hasattr(msg, 'role') and hasattr(msg, 'content'):
                 role = "User" if msg.role == "user" else "Assistant"
-                prompt += f"\n{role}: {msg.content}"
+                conversation_history += f"\n{role}: {msg.content}"
             elif isinstance(msg, dict):
                 role = "User" if msg.get('role') == "user" else "Assistant"
-                prompt += f"\n{role}: {msg.get('content', '')}"
+                conversation_history += f"\n{role}: {msg.get('content', '')}"
         
-        # Add specific guidance for status requests
-        prompt += "\n\nImportant: If the user asks about request status, ticket status, or 'my request', refer to any tickets mentioned in the conversation history above. Be helpful and reference specific ticket IDs if they were mentioned."
-        prompt += "\nAssistant:"
+        # Use system prompt (can be modified by developer)
+        prompt = DEFAULT_RESPONSE_PROMPT.format(
+            personality=personality,
+            knowledge_section=knowledge_section,
+            tools_section=tools_section,
+            conversation_history=conversation_history
+        )
         
         try:
             response = await self.llm.ainvoke(prompt)
@@ -493,28 +512,49 @@ Respond with only "NEW" or "CONTINUE":"""
     async def _generate_missing_requirements_response(
         self, category: str, missing_fields: list[str], user_message: str
     ) -> str:
-        """Generate a conversational response for missing requirements."""
+        """Generate a conversational response for missing requirements with field-specific prompts."""
         
-        # Create a conversational prompt for the LLM
-        personality = self.get_personality()
+        if not missing_fields:
+            return "I have all the information I need. Let me help you with that."
         
-        prompt = f"""You are a helpful assistant in a casual chat conversation.
-
-The user said: "{user_message}"
-You need this missing info: {', '.join(missing_fields)}
-
-Respond in 1-2 short sentences asking for what you need. Be direct and professional. Don't use phrases like "Oh no", "that's frustrating", or other emotional reactions. Just ask for the information you need.
-
-Response:"""
-
-        try:
-            response = await self.llm.ainvoke(prompt)
-            return response.content if hasattr(response, "content") else str(response)
-        except Exception as e:
-            # Fallback to brief chat-style responses
-            if len(missing_fields) == 1:
-                field = missing_fields[0]
-                return f"I can help with that! What's your {field}?"
-            else:
-                fields_text = ", ".join(missing_fields[:-1]) + f", and {missing_fields[-1]}" if len(missing_fields) > 1 else missing_fields[0]
-                return f"I can help! I just need your {fields_text}."
+        # Use field-specific prompts for better user guidance
+        field = missing_fields[0]  # Focus on one field at a time
+        field_display = field.replace("_", " ")
+        
+        # Category-specific prompts
+        if category == "TechnicalSupport" and field == "problem_details":
+            return "Could you describe the technical issue you're experiencing? Please include any error messages or specific symptoms."
+        elif category == "BillingInquiry" and field == "account_number":
+            return "I'll need your account number to assist with billing matters. You can find this on your billing statement or customer portal."
+        elif category == "AccountAccess" and field == "username":
+            return "What username are you having trouble accessing?"
+        
+        # Fallback to generic prompt
+        return f"Could you please provide your {field_display}?"
+    
+    def _load_knowledge_sources(self) -> None:
+        """
+        Load knowledge sources into the knowledge manager.
+        
+        This method is called during initialization to load all knowledge sources
+        defined by get_knowledge() into the KnowledgeManager for efficient retrieval.
+        """
+        knowledge_sources = self.get_knowledge()
+        if knowledge_sources:
+            try:
+                stats = self.knowledge_manager.load_sources(knowledge_sources)
+                if stats['errors']:
+                    import logging
+                    logging.warning(f"Knowledge loading errors: {stats['errors']}")
+            except Exception as e:
+                import logging
+                logging.error(f"Failed to load knowledge sources: {str(e)}")
+    
+    def reload_knowledge(self) -> Dict[str, any]:
+        """
+        Reload knowledge sources - useful for development/testing.
+        
+        Returns:
+            Dictionary with loading statistics
+        """
+        return self.knowledge_manager.load_sources(self.get_knowledge())

@@ -68,10 +68,8 @@ class HelpDeskAgent(Agent):
     def get_knowledge(self) -> list[str]:
         """Knowledge sources for the help desk."""
         return [
-            "company_policies.md",
-            "troubleshooting_guides/",
-            "product_documentation/",
-            "billing_procedures.md"
+            "/Users/repque/dev/src/agentic/company_policies.md",
+            "/Users/repque/dev/src/agentic/billing_procedures.md"
         ]
     
     def handle_tech_support(self, state: AgentState) -> HandlerResponse:
@@ -87,25 +85,22 @@ class HelpDeskAgent(Agent):
         response = f"""🎫 **Technical Support Ticket Created**
 
 **Ticket ID:** {ticket_id}
-**Priority:** Standard
 **Status:** Open
+**Issue:** {current_issue}
 
-**Next Steps:**
-1. I've created your support ticket and documented your issue
-2. Our technical team will review within 2 business hours
-3. You'll receive email updates at your registered address
-4. Average resolution time: 24-48 hours
+**What happens next:**
+1. Your issue has been documented and assigned to our technical team
+2. You'll receive updates via email as we investigate
+3. Our team will work to resolve this as quickly as possible
 
-**Immediate Suggestions:**
-• Try restarting the application
-• Check if your software is up to date
-• Clear browser cache if it's a web application
+**While you wait, you might try:**
+• Restarting the application
+• Checking for software updates
+• Clearing browser cache (for web applications)
 
-**Reference Information:**
-• Ticket ID: {ticket_id}
-• Issue: {current_issue}
+**Your ticket reference:** {ticket_id}
 
-Is there anything else I can help you with while we work on resolving this issue?"""
+Is there anything else I can help you with?"""
         
         return HandlerResponse(
             messages=[Message(role="assistant", content=response)]
@@ -120,32 +115,27 @@ Is there anything else I can help you with while we work on resolving this issue
         
         response = f"""💳 **Billing Inquiry - Account Located**
 
-I've found your account and can help with your billing question.
+I've located your account and can help with your billing question.
 
 **Account Status:** {account_status}
-**Last Payment:** December 15, 2024
-**Next Bill Date:** January 15, 2025
 
-**Available Actions:**
-• View billing history
-• Update payment method  
-• Set up auto-pay
+**Available options:**
+• Review billing history
+• Update payment information  
+• Set up automatic payments
 • Download invoices
-• Dispute charges
+• Submit billing disputes
 
-For security reasons, I can only provide general account information in this chat. 
-For detailed billing changes, I'll need to:
+**For your security:**
+I can provide general billing information here, but account changes require identity verification.
 
-1. Verify your identity with additional security questions
-2. Transfer you to our billing specialist
-3. Send secure links to your registered email
+**Next steps:**
+I can help you with:
+• Scheduling a callback from our billing team
+• Sending secure access links to your registered email
+• General billing policy questions
 
-**Would you like me to:**
-• Schedule a callback from billing (recommended)
-• Send secure account access link to your email
-• Provide general billing policy information
-
-What would work best for you?"""
+What would be most helpful for you?"""
         
         return HandlerResponse(
             messages=[Message(role="assistant", content=response)]
@@ -156,39 +146,29 @@ What would work best for you?"""
         
         response = """🔐 **Account Access Support**
 
-I understand you're having trouble accessing your account. Let me help you get back in.
+I can help you with your login issue. To resolve this properly, I'll need to gather some additional information and verify your identity.
 
-**Common Solutions:**
-1. **Password Reset**
-   • Visit: company.com/reset-password
-   • Enter your username or email
-   • Check email for reset link (including spam folder)
+**What I can help with:**
+• Password reset assistance
+• Account unlock requests  
+• Username recovery
+• Two-factor authentication issues
 
-2. **Account Locked**
-   • Usually unlocks automatically after 30 minutes
-   • Or I can unlock it now with identity verification
+**Next steps:**
+To proceed safely, I'll need to verify your identity. I can:
+1. Send a verification link to your registered email
+2. Transfer you to our identity verification team
+3. Guide you through self-service options
 
-3. **Username Recovery**
-   • Check your welcome email from when you signed up
-   • Username is usually your email address
+**For your security:**
+I cannot make account changes without proper verification, but I can guide you through the process.
 
-**Security Verification Required:**
-For your protection, I'll need to verify your identity before making account changes.
+Would you prefer:
+• Email verification (if you have email access)
+• Phone verification with our security team
+• Self-service troubleshooting guidance
 
-**Next Steps:**
-• I can send a secure verification link to your registered email
-• Or we can do verification over the phone
-• Account unlock typically takes 2-3 minutes once verified
-
-**Emergency Access:**
-If this is urgent and you can't access your email, I can escalate to our security team for manual verification.
-
-Would you like me to:
-1. Send email verification link
-2. Schedule phone verification  
-3. Escalate for emergency access
-
-What's your preference?"""
+What works best for you?"""
         
         return HandlerResponse(
             messages=[Message(role="assistant", content=response)]

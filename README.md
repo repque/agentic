@@ -29,6 +29,8 @@ class MyAgent(Agent):
 
 - **LangGraph Foundation** - Built on proven enterprise orchestration  
 - **LLM-Based Classification** - Intelligent categorization and validation using your LLM
+- **Framework-Agnostic Knowledge** - Reusable KnowledgeManager for any GenAI framework
+- **Context-Aware Retrieval** - Smart knowledge injection based on user queries
 - **Simple Conflict Resolution** - One handler per category, no complexity  
 - **Automatic Memory** - Conversation persistence with zero config  
 - **Confidence Scoring** - Quality control with automatic escalation  
@@ -63,7 +65,7 @@ class HelpDeskAgent(Agent):
         ]
     
     def get_knowledge(self):
-        return ["./docs/support/", "./kb/"]
+        return ["./docs/support/", "./kb/billing_procedures.md", "https://api.company.com/docs"]
     
     def handle_tech_support(self, state):
         # Your custom business logic
@@ -97,6 +99,8 @@ response = await agent.chat("I need help with login issues", "user123")
 
 - **All routing logic** (automatic decision making)
 - **Intelligent LLM-based classification and requirements validation**
+- **Framework-agnostic knowledge management** (files, directories, URLs)
+- **Context-aware knowledge retrieval** (smart content injection)
 - **Confidence scoring and thresholding**  
 - **State management and persistence**
 - **Multi-user isolation**
@@ -131,7 +135,7 @@ class EnterpriseAgent(Agent):
         ]
     
     def get_knowledge(self):
-        return ["./policies/", "./procedures/"]
+        return ["./policies/", "./procedures/", "https://company.com/api/docs"]
     
     def handle_review(self, state):
         # Extract review details

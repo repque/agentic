@@ -7,6 +7,7 @@ All classification and validation is done through LLM calls for maximum accuracy
 
 from typing import List, Any
 from .models import CategoryRequirement
+from .system_prompts import CLASSIFICATION_PROMPT, REQUIREMENTS_PROMPT
 
 
 async def classify_message_with_llm(
@@ -28,18 +29,12 @@ async def classify_message_with_llm(
     if not categories:
         return "default"
     
-    # Create classification prompt
+    # Use system prompt (can be modified by developer)
     categories_str = ", ".join(categories)
-    classification_prompt = f"""Classify the following user message into ONE of these categories: {categories_str}
-
-Instructions:
-- Choose the most appropriate category based on the user's intent
-- If the message doesn't clearly fit any category, respond with "default"
-- Respond with ONLY the category name, nothing else
-
-User message: "{message}"
-
-Category:"""
+    classification_prompt = CLASSIFICATION_PROMPT.format(
+        categories=categories_str,
+        message=message
+    )
 
     try:
         # Get LLM classification
@@ -72,13 +67,14 @@ async def check_requirements_with_llm(
     conversation_history: List[Any] = None
 ) -> tuple[bool, List[str]]:
     """
-    Use LLM to check if required information is present in the message.
+    Simplified requirements checking focusing on current message + recent context.
     
     Args:
         llm: The language model instance
         message: User message to analyze
         category: The classified category
         requirements: List of category requirements
+        conversation_history: Recent conversation (optional, limited to last 2-3 messages)
         
     Returns:
         Tuple of (requirements_met: bool, missing_fields: List[str])
@@ -93,46 +89,28 @@ async def check_requirements_with_llm(
     if not category_reqs or not category_reqs.required_fields:
         return True, []
     
-    # Use LLM to analyze all required fields considering conversation history
+    # Simple approach: focus on current message with minimal context
     fields_str = ", ".join(category_reqs.required_fields)
     
-    # Build conversation context
-    conversation_context = ""
+    # Only use last 2 user messages for context (avoid confusion from long conversations)
+    recent_context = ""
     if conversation_history:
-        context_messages = []
-        for msg in conversation_history[-5:]:  # Look at last 5 messages for context
-            if hasattr(msg, 'role') and hasattr(msg, 'content'):
-                if msg.role == "user":
-                    context_messages.append(f"User: {msg.content}")
-                elif msg.role == "assistant":
-                    context_messages.append(f"Assistant: {msg.content}")
-        if context_messages:
-            conversation_context = f"\nConversation history:\n" + "\n".join(context_messages) + "\n"
+        recent_user_messages = []
+        for msg in reversed(conversation_history):
+            if hasattr(msg, 'role') and msg.role == "user":
+                recent_user_messages.append(msg.content)
+                if len(recent_user_messages) >= 2:  # Only last 2 user messages
+                    break
+        
+        if len(recent_user_messages) > 1:
+            recent_context = f"\nPrevious user message: \"{recent_user_messages[1]}\"\n"
     
-    analysis_prompt = f"""Analyze the conversation to determine which required information is present or missing.
-
-Required fields: {fields_str}{conversation_context}
-Current message: "{message}"
-
-Instructions:
-- Look at the ENTIRE conversation history, not just the current message
-- For each required field, determine if ANY message in the conversation contains that information
-- Be strict about requiring actionable troubleshooting information
-- Examples of sufficient problem_details (CREATE TICKET):
-  * Includes error messages: "shows error code 0x123", "displays 'disk not found'"
-  * Includes troubleshooting steps tried: "won't turn on, no lights, tried different power cable"
-  * Includes specific triggers: "crashes every time I click File menu"
-- Examples of insufficient problem_details (ASK FOR MORE):
-  * Basic symptoms only: "won't turn on", "isn't blowing cold air", "not working", "runs slow"
-  * Missing context: "keeps crashing", "overheating", "making noise"
-- ALWAYS ask for more details unless the message includes error messages, troubleshooting steps, or specific triggers
-  * account_number: any account identifier or number
-  * username: any username, email, or user identifier
-- List only the MISSING fields (fields not present anywhere in the conversation)
-- If all fields are present, respond with "NONE"
-- Respond with missing field names separated by commas, or "NONE"
-
-Missing fields:"""
+    # Use system prompt (can be modified by developer)
+    analysis_prompt = REQUIREMENTS_PROMPT.format(
+        required_fields=fields_str,
+        recent_context=recent_context,
+        message=message
+    )
 
     try:
         response = await llm.ainvoke(analysis_prompt)

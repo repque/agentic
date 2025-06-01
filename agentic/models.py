@@ -25,6 +25,7 @@ class AgentState(BaseModel):
     confidence: Optional[float] = None
     needs_escalation: bool = False
     workflow_step: Optional[str] = None
+    requirement_attempts: Dict[str, int] = Field(default_factory=dict)
     metadata: Dict[str, Any] = Field(default_factory=dict)
 
 
