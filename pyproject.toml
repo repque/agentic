@@ -44,6 +44,6 @@ addopts = "-v"
 [project.scripts]
 agentic = "agentic.cli:cli"
 
-[tool.setuptools.packages.find]
-where = ["."]
-include = ["agentic*"]
+[tool.setuptools]
+packages = ["agentic", "agentic.examples"]
+package-dir = {"agentic" = "src"}
