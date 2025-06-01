@@ -127,12 +127,47 @@ def get_knowledge(self):
 - Max 10,000 characters
 - Requires `requests` library
 
-## 🔍 Retrieval System
+## 🔍 Retrieval Systems
 
-### How Retrieval Works
+### Embedding-Based Retrieval (Recommended)
 
 ```python
-# SimpleRetriever uses keyword matching
+from agentic.knowledge import create_default_knowledge_manager
+
+# Default manager uses embedding-based semantic search
+km = create_default_knowledge_manager()
+km.load_sources(["./docs/"])
+
+# Queries are converted to embeddings and matched with content embeddings
+query = "payment methods credit card"
+# Framework automatically:
+# 1. Converts query to embedding using OpenAI text-embedding-3-small
+# 2. Searches Chroma vector database for semantic similarity
+# 3. Returns most relevant content chunks ranked by similarity score
+# 4. Falls back to keyword matching if embeddings fail
+```
+
+**Advantages:**
+- Semantic understanding (finds "billing" when you search for "payment")
+- Better relevance ranking
+- Handles synonyms and related concepts
+- Automatic content chunking with sentence boundaries
+
+**Requirements:**
+```bash
+pip install agentic[embeddings]  # Installs chromadb and openai
+```
+
+### Keyword-Based Retrieval (Fallback)
+
+```python
+from agentic.knowledge import create_simple_knowledge_manager
+
+# Simple manager uses keyword matching only
+km = create_simple_knowledge_manager()
+km.load_sources(["./docs/"])
+
+# SimpleRetriever uses keyword overlap scoring
 query = "payment methods credit card"
 query_words = {"payment", "methods", "credit", "card"}
 
@@ -311,6 +346,30 @@ class CustomRetriever:
 km = KnowledgeManager()
 km.set_retriever(CustomRetriever())
 ```
+
+### Embedding Configuration
+
+```python
+from agentic.knowledge import EmbeddingRetriever
+
+# Customize embedding settings
+custom_retriever = EmbeddingRetriever(
+    collection_name="my_knowledge",
+    persist_directory="./my_chroma_db",
+    embedding_model="text-embedding-3-large"  # Higher quality embeddings
+)
+
+km = KnowledgeManager()
+km.set_retriever(custom_retriever)
+```
+
+**Available Embedding Models:**
+- `text-embedding-3-small` (default) - Cost-effective, good performance
+- `text-embedding-3-large` - Higher quality, more expensive
+- `text-embedding-ada-002` - Legacy model
+
+**Change Detection:**
+The system automatically detects content changes using MD5 hashing and only re-vectorizes modified content, making updates efficient.
 
 ## 🧪 Testing Knowledge Integration
 
@@ -509,7 +568,25 @@ class KnowledgeManager:
 
 ```python
 def create_default_knowledge_manager() -> KnowledgeManager
-    # Creates KM with FileLoader, URLLoader, and SimpleRetriever
+    # Creates KM with FileLoader, URLLoader, and EmbeddingRetriever (semantic search)
+
+def create_simple_knowledge_manager() -> KnowledgeManager
+    # Creates KM with FileLoader, URLLoader, and SimpleRetriever (keyword matching)
+```
+
+### EmbeddingRetriever
+
+```python
+class EmbeddingRetriever:
+    def __init__(self, 
+                 collection_name: str = "knowledge",
+                 persist_directory: str = ".chroma_db", 
+                 embedding_model: str = "text-embedding-3-small")
+    
+    def add_content(self, content: Dict[str, Any]) -> None
+    def retrieve(self, query: str, max_results: int = 5) -> List[Dict[str, Any]]
+    def _chunk_content(self, content: str, max_chunk_size: int = 1000) -> List[str]
+    def _compute_content_hash(self, content: str) -> str
 ```
 
 The KnowledgeManager provides a powerful, flexible foundation for integrating knowledge into any GenAI application while maintaining framework agnosticism and ease of use.
