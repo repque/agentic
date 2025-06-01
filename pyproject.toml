@@ -50,9 +50,9 @@ target-version = ['py39']
 testpaths = ["tests"]
 addopts = "-v"
 
-[project.scripts]
+[project.entry-points.console_scripts]
 agentic = "agentic.cli:cli"
 
 [tool.setuptools]
-packages = ["agentic", "agentic.examples"]
-package-dir = {"agentic" = "src"}
+package-dir = {"" = "src"}
+packages = {find = {where = ["src"]}}
