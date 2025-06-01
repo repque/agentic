@@ -11,7 +11,7 @@ from langgraph.graph import StateGraph, START, END
 from langgraph.checkpoint.memory import MemorySaver
 
 from .models import AgentState, Message, CategoryRequirement, HandlerResponse
-from .classification import classify_message_with_llm, check_requirements_with_llm, check_field_present
+from .classification import classify_message_with_llm, check_requirements_with_llm
 from .tools import get_tools_by_names, get_tools_by_names_async, load_mcp_tools
 
 

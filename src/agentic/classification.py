@@ -1,12 +1,12 @@
 """
-LLM-based classification for intelligent input categorization.
+LLM-based classification and requirements validation.
 
-Uses the agent's LLM to classify user messages into developer-defined categories.
+Uses the agent's LLM for intelligent message categorization and requirements checking.
+All classification and validation is done through LLM calls for maximum accuracy.
 """
 
-import re
-from typing import List, Any, Optional
-from .models import AgentState, CategoryRequirement
+from typing import List, Any
+from .models import CategoryRequirement
 
 
 async def classify_message_with_llm(
@@ -134,22 +134,3 @@ Missing fields:"""
         return False, category_reqs.required_fields
 
 
-def check_field_present(message: str, field: str) -> bool:
-    """
-    Synchronous field detection for backwards compatibility.
-    
-    Uses basic pattern matching without LLM calls.
-    """
-    field_lower = field.lower()
-    message_lower = message.lower()
-    
-    # Check for URLs
-    if field_lower in ["url", "link"]:
-        return bool(re.search(r"https?://[^\s]+", message))
-    
-    # Check for amounts/money
-    if field_lower in ["amount", "cost", "price"]:
-        return bool(re.search(r"[\$€£¥][\d,.]+|\b\d+\b", message))
-    
-    # Simple word presence check
-    return field_lower in message_lower

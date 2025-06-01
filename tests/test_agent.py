@@ -66,18 +66,21 @@ def test_handler_registration(mock_llm):
     assert "ReviewRequest" not in agent.handlers
 
 
+@pytest.mark.asyncio
 @patch("src.agentic.agent.ChatOpenAI")
-def test_basic_chat(mock_llm):
+@patch("src.agentic.agent.load_mcp_tools", return_value=[])
+@patch("src.agentic.agent.get_tools_by_names", return_value=[])
+async def test_basic_chat(mock_tools, mock_mcp, mock_llm):
     """Test basic chat functionality with LangGraph workflow."""
     # Mock the LLM
     mock_llm_instance = Mock()
-    mock_llm_instance.invoke.return_value.content = "Hello! How can I help you?"
+    mock_llm_instance.ainvoke.return_value.content = "Hello! How can I help you?"
     mock_llm.return_value = mock_llm_instance
 
     agent = ExampleAgent()
 
     # This should now use the real LangGraph workflow
-    response = agent.chat("Hello world", "user123")
+    response = await agent.chat("Hello world", "user123")
 
     assert isinstance(response, str)
     assert len(response) > 0  # Should get some response
@@ -106,46 +109,62 @@ def test_framework_methods(mock_llm):
 # Phase 2 tests - Real workflow integration
 
 
+@pytest.mark.asyncio
 @patch("src.agentic.agent.ChatOpenAI")
-def test_complete_flow(mock_llm):
+@patch("src.agentic.agent.load_mcp_tools", return_value=[])
+@patch("src.agentic.agent.get_tools_by_names", return_value=[])
+async def test_complete_flow(mock_tools, mock_mcp, mock_llm):
     """Test the main happy path - complete request with custom handler."""
-    # Mock LLM to classify as ReviewRequest
+    # Mock LLM to classify as ReviewRequest  
     mock_llm_instance = Mock()
-    mock_llm_instance.invoke.side_effect = [
-        "ReviewRequest",
-        "Review created",
-    ]  # Classification, then handler
+    async def mock_ainvoke(prompt):
+        if "Classify" in prompt:
+            return Mock(content="ReviewRequest")
+        else:
+            return Mock(content="NONE")
+    mock_llm_instance.ainvoke = mock_ainvoke
     mock_llm.return_value = mock_llm_instance
 
     agent = ExampleAgent()
     agent.register_handler("ReviewRequest", agent.handle_review_request)
 
-    response = agent.chat("Review https://github.com/repo/pr/123", "user123")
+    response = await agent.chat("Review https://github.com/repo/pr/123", "user123")
     assert "Review created" in response
 
 
+@pytest.mark.asyncio
 @patch("src.agentic.agent.ChatOpenAI")
-def test_missing_requirements(mock_llm):
+@patch("src.agentic.agent.load_mcp_tools", return_value=[])
+@patch("src.agentic.agent.get_tools_by_names", return_value=[])
+async def test_missing_requirements(mock_tools, mock_mcp, mock_llm):
     """Test missing requirements handling."""
     # Mock LLM to classify as ReviewRequest but message lacks URL
     mock_llm_instance = Mock()
-    mock_llm_instance.invoke.return_value.content = "ReviewRequest"
+    async def mock_ainvoke(prompt):
+        if "Classify" in prompt:
+            return Mock(content="ReviewRequest")
+        else:
+            return Mock(content="url")  # Missing URL field
+    mock_llm_instance.ainvoke = mock_ainvoke
     mock_llm.return_value = mock_llm_instance
 
     agent = ExampleAgent()
-    response = agent.chat("Please review my code", "user123")
+    response = await agent.chat("Please review my code", "user123")
     assert "Need:" in response and "url" in response
 
 
+@pytest.mark.asyncio
 @patch("src.agentic.agent.ChatOpenAI")
-def test_default_flow(mock_llm):
+@patch("src.agentic.agent.load_mcp_tools", return_value=[])
+@patch("src.agentic.agent.get_tools_by_names", return_value=[])
+async def test_default_flow(mock_tools, mock_mcp, mock_llm):
     """Test fallback to default flow."""
     # Mock LLM to classify as "default" and provide response
     mock_llm_instance = Mock()
-    mock_llm_instance.invoke.side_effect = ["default", "Our vacation policy is..."]
+    mock_llm_instance.ainvoke.side_effect = [Mock(content="default"), Mock(content="Our vacation policy is...")]
     mock_llm.return_value = mock_llm_instance
 
     agent = ExampleAgent()
-    response = agent.chat("What's our vacation policy?", "user123")
+    response = await agent.chat("What's our vacation policy?", "user123")
     assert isinstance(response, str)
     assert len(response) > 0

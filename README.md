@@ -27,13 +27,14 @@ class MyAgent(Agent):
 
 ## Features
 
-✅ **LangGraph Foundation** - Built on proven enterprise orchestration  
-✅ **Always-On Classification** - Every input categorized and validated  
-✅ **Simple Conflict Resolution** - One handler per category, no complexity  
-✅ **Automatic Memory** - Conversation persistence with zero config  
-✅ **Confidence Scoring** - Quality control with automatic escalation  
-✅ **MCP Tool Integration** - Automatic discovery and integration with MCP servers  
-✅ **Type Safety** - Pydantic models throughout  
+- **LangGraph Foundation** - Built on proven enterprise orchestration  
+- **LLM-Based Classification** - Intelligent categorization and validation using your LLM
+- **Simple Conflict Resolution** - One handler per category, no complexity  
+- **Automatic Memory** - Conversation persistence with zero config  
+- **Confidence Scoring** - Quality control with automatic escalation  
+- **MCP Tool Integration** - Automatic discovery and integration with MCP servers  
+- **Type Safety** - Pydantic models throughout
+- **Async-First** - Modern Python async/await patterns  
 
 ## Quick Start
 
@@ -96,14 +97,14 @@ response = await agent.chat("I need help with login issues", "user123")
 
 ### What You Get Automatically
 
-- ✅ **All routing logic** (diamond decision points in flowchart)
-- ✅ **Intelligent LLM-based classification and requirements validation**
-- ✅ **Confidence scoring and thresholding**  
-- ✅ **State management and persistence**
-- ✅ **Multi-user isolation**
-- ✅ **Error handling and retries**
-- ✅ **Human-in-the-loop workflows**
-- ✅ **Streaming and observability**
+- **All routing logic** (diamond decision points in flowchart)
+- **Intelligent LLM-based classification and requirements validation**
+- **Confidence scoring and thresholding**  
+- **State management and persistence**
+- **Multi-user isolation**
+- **Error handling and retries**
+- **Human-in-the-loop workflows**
+- **Streaming and observability**
 
 ## Examples
 
@@ -196,7 +197,7 @@ assert len(response) > 0
 ```
 Input: "Review https://github.com/repo/pr/123 for security scope"
 → LLM Classification: "ReviewRequest" (intelligent understanding)
-→ LLM Requirements: ✅ URL and scope detected  
+→ LLM Requirements: URL and scope detected  
 → Execute: handle_review()
 → Output: "Review JIRA-456 created"
 ```
@@ -205,7 +206,7 @@ Input: "Review https://github.com/repo/pr/123 for security scope"
 ```
 Input: "Please review my code"
 → LLM Classification: "ReviewRequest" (understands intent)
-→ LLM Requirements: ❌ Missing URL and scope detected
+→ LLM Requirements: Missing URL and scope detected
 → Output: "Need: url, scope"
 ```
 
@@ -237,6 +238,42 @@ Input: "Complex technical question"
 → Escalation: handle_low_confidence()
 → Output: "Connecting you with an expert..."
 ```
+
+## Intelligent Classification System
+
+The framework uses your LLM for all classification and requirements validation, providing maximum accuracy and context understanding:
+
+### How It Works
+
+1. **Message Classification**: Your LLM analyzes user input and categorizes it into your defined categories
+2. **Requirements Validation**: Your LLM checks if all required information is present in the message
+3. **Smart Understanding**: Handles synonyms, context, and intent automatically
+
+### Benefits of LLM-Based Classification
+
+- **Context Aware**: Understands "check my PR" means "ReviewRequest"
+- **No Pattern Matching**: No brittle regex or keyword matching
+- **Intelligent**: Detects missing requirements with natural language understanding
+- **Consistent**: Single approach for all classification needs
+
+### Example Classification Prompts
+
+The framework automatically generates prompts like:
+
+```
+Classify the following user message into ONE of these categories: ReviewRequest, Query
+
+Instructions:
+- Choose the most appropriate category based on the user's intent
+- If the message doesn't clearly fit any category, respond with "default"
+- Respond with ONLY the category name, nothing else
+
+User message: "Can someone check my PR?"
+
+Category:
+```
+
+Result: `ReviewRequest` (LLM understands "check" = "review")
 
 ## Advanced Features
 
@@ -394,7 +431,7 @@ Building production AI agents typically requires:
 
 - **5 simple methods** → Complete enterprise workflow
 - **LangGraph foundation** → Production-grade orchestration  
-- **Always-on classification** → Smart routing with validation
+- **LLM-based classification** → Intelligent routing and requirements validation
 - **Zero-config memory** → Automatic persistence and isolation
 - **Built-in quality control** → Confidence scoring and escalation
 

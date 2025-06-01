@@ -38,7 +38,8 @@ def test_basic_mock_import():
     assert CategoryRequirement is not None
 
 
-def test_agent_creation_with_mocks():
+@pytest.mark.asyncio
+async def test_agent_creation_with_mocks():
     """Test agent creation with fully mocked LangChain."""
     from src.agentic import Agent, CategoryRequirement
 
@@ -53,11 +54,17 @@ def test_agent_creation_with_mocks():
 
     # Mock the StateGraph workflow compilation
     mock_workflow = MagicMock()
-    mock_workflow.invoke.return_value = {
-        "messages": [{"role": "assistant", "content": "Test response"}]
-    }
+    
+    async def mock_ainvoke(*args, **kwargs):
+        return {
+            "messages": [{"role": "assistant", "content": "Test response"}]
+        }
+    
+    mock_workflow.ainvoke = mock_ainvoke
 
-    with patch("src.agentic.agent.StateGraph") as mock_state_graph:
+    with patch("src.agentic.agent.StateGraph") as mock_state_graph, \
+         patch("src.agentic.agent.load_mcp_tools", return_value=[]), \
+         patch("src.agentic.agent.get_tools_by_names", return_value=[]):
         mock_graph_instance = MagicMock()
         mock_graph_instance.compile.return_value = mock_workflow
         mock_state_graph.return_value = mock_graph_instance
@@ -67,7 +74,7 @@ def test_agent_creation_with_mocks():
         assert len(agent.get_classification_categories()) == 2
 
         # Test chat with mocked workflow
-        response = agent.chat("Hello", "user123")
+        response = await agent.chat("Hello", "user123")
         assert response == "Test response"
 
 
@@ -85,7 +92,9 @@ def test_handler_registration_with_mocks():
                 messages=[Message(role="assistant", content="Review created")]
             )
 
-    with patch("src.agentic.agent.StateGraph"):
+    with patch("src.agentic.agent.StateGraph"), \
+         patch("src.agentic.agent.load_mcp_tools", return_value=[]), \
+         patch("src.agentic.agent.get_tools_by_names", return_value=[]):
         agent = TestAgent()
 
         # Test handler registration
