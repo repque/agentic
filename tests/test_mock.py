@@ -31,7 +31,7 @@ sys.modules["langchain_openai"].ChatOpenAI = MagicMock
 
 def test_basic_mock_import():
     """Test that we can import our agent with mocked dependencies."""
-    from src.agentic import Agent, CategoryRequirement
+    from agentic import Agent, CategoryRequirement
 
     # This should work now
     assert Agent is not None
@@ -41,7 +41,7 @@ def test_basic_mock_import():
 @pytest.mark.asyncio
 async def test_agent_creation_with_mocks():
     """Test agent creation with fully mocked LangChain."""
-    from src.agentic import Agent, CategoryRequirement
+    from agentic import Agent, CategoryRequirement
 
     class TestAgent(Agent):
         def get_classification_categories(self):
@@ -62,9 +62,9 @@ async def test_agent_creation_with_mocks():
     
     mock_workflow.ainvoke = mock_ainvoke
 
-    with patch("src.agentic.agent.StateGraph") as mock_state_graph, \
-         patch("src.agentic.agent.load_mcp_tools", return_value=[]), \
-         patch("src.agentic.agent.get_tools_by_names", return_value=[]):
+    with patch("agentic.agent.StateGraph") as mock_state_graph, \
+         patch("agentic.agent.load_mcp_tools", return_value=[]), \
+         patch("agentic.agent.get_tools_by_names", return_value=[]):
         mock_graph_instance = MagicMock()
         mock_graph_instance.compile.return_value = mock_workflow
         mock_state_graph.return_value = mock_graph_instance
@@ -80,8 +80,8 @@ async def test_agent_creation_with_mocks():
 
 def test_handler_registration_with_mocks():
     """Test handler registration works with mocked system."""
-    from src.agentic import Agent
-    from src.agentic.models import Message, HandlerResponse
+    from agentic import Agent
+    from agentic.models import Message, HandlerResponse
 
     class TestAgent(Agent):
         def get_classification_categories(self):
@@ -92,9 +92,9 @@ def test_handler_registration_with_mocks():
                 messages=[Message(role="assistant", content="Review created")]
             )
 
-    with patch("src.agentic.agent.StateGraph"), \
-         patch("src.agentic.agent.load_mcp_tools", return_value=[]), \
-         patch("src.agentic.agent.get_tools_by_names", return_value=[]):
+    with patch("agentic.agent.StateGraph"), \
+         patch("agentic.agent.load_mcp_tools", return_value=[]), \
+         patch("agentic.agent.get_tools_by_names", return_value=[]):
         agent = TestAgent()
 
         # Test handler registration

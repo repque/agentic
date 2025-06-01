@@ -68,7 +68,8 @@ async def check_requirements_with_llm(
     llm: Any,
     message: str,
     category: str,
-    requirements: List[CategoryRequirement]
+    requirements: List[CategoryRequirement],
+    conversation_history: List[Any] = None
 ) -> tuple[bool, List[str]]:
     """
     Use LLM to check if required information is present in the message.
@@ -92,17 +93,42 @@ async def check_requirements_with_llm(
     if not category_reqs or not category_reqs.required_fields:
         return True, []
     
-    # Use LLM to analyze all required fields at once
+    # Use LLM to analyze all required fields considering conversation history
     fields_str = ", ".join(category_reqs.required_fields)
     
-    analysis_prompt = f"""Analyze the following message to determine which required information is present or missing.
+    # Build conversation context
+    conversation_context = ""
+    if conversation_history:
+        context_messages = []
+        for msg in conversation_history[-5:]:  # Look at last 5 messages for context
+            if hasattr(msg, 'role') and hasattr(msg, 'content'):
+                if msg.role == "user":
+                    context_messages.append(f"User: {msg.content}")
+                elif msg.role == "assistant":
+                    context_messages.append(f"Assistant: {msg.content}")
+        if context_messages:
+            conversation_context = f"\nConversation history:\n" + "\n".join(context_messages) + "\n"
+    
+    analysis_prompt = f"""Analyze the conversation to determine which required information is present or missing.
 
-Required fields: {fields_str}
-Message: "{message}"
+Required fields: {fields_str}{conversation_context}
+Current message: "{message}"
 
 Instructions:
-- For each required field, determine if the message contains that information
-- List only the MISSING fields (fields not present in the message)
+- Look at the ENTIRE conversation history, not just the current message
+- For each required field, determine if ANY message in the conversation contains that information
+- Be strict about requiring actionable troubleshooting information
+- Examples of sufficient problem_details (CREATE TICKET):
+  * Includes error messages: "shows error code 0x123", "displays 'disk not found'"
+  * Includes troubleshooting steps tried: "won't turn on, no lights, tried different power cable"
+  * Includes specific triggers: "crashes every time I click File menu"
+- Examples of insufficient problem_details (ASK FOR MORE):
+  * Basic symptoms only: "won't turn on", "isn't blowing cold air", "not working", "runs slow"
+  * Missing context: "keeps crashing", "overheating", "making noise"
+- ALWAYS ask for more details unless the message includes error messages, troubleshooting steps, or specific triggers
+  * account_number: any account identifier or number
+  * username: any username, email, or user identifier
+- List only the MISSING fields (fields not present anywhere in the conversation)
 - If all fields are present, respond with "NONE"
 - Respond with missing field names separated by commas, or "NONE"
 

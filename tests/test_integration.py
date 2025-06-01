@@ -31,7 +31,7 @@ sys.modules["langchain_openai"].ChatOpenAI = MagicMock
 @pytest.mark.asyncio
 async def test_complete_framework_demo():
     """Test the complete framework functionality as shown in README."""
-    from src.agentic import Agent, CategoryRequirement, Message, HandlerResponse
+    from agentic import Agent, CategoryRequirement, Message, HandlerResponse
 
     class EnterpriseAgent(Agent):
         def __init__(self):
@@ -102,9 +102,9 @@ async def test_complete_framework_demo():
 
     mock_workflow.ainvoke = mock_ainvoke
 
-    with patch("src.agentic.agent.StateGraph") as mock_state_graph, \
-         patch("src.agentic.agent.load_mcp_tools", return_value=[]), \
-         patch("src.agentic.agent.get_tools_by_names", return_value=[]):
+    with patch("agentic.agent.StateGraph") as mock_state_graph, \
+         patch("agentic.agent.load_mcp_tools", return_value=[]), \
+         patch("agentic.agent.get_tools_by_names", return_value=[]):
         mock_graph_instance = MagicMock()
         mock_graph_instance.compile.return_value = mock_workflow
         mock_state_graph.return_value = mock_graph_instance
@@ -126,15 +126,15 @@ async def test_complete_framework_demo():
 
 def test_tools_integration():
     """Test tool integration works correctly."""
-    from src.agentic import Agent
+    from agentic import Agent
 
     class ToolAgent(Agent):
         def __init__(self):
             super().__init__(tools=[])  # No specific tools, will load from MCP
 
-    with patch("src.agentic.agent.StateGraph"), \
-         patch("src.agentic.agent.load_mcp_tools", return_value=[]), \
-         patch("src.agentic.agent.get_tools_by_names", return_value=[]):
+    with patch("agentic.agent.StateGraph"), \
+         patch("agentic.agent.load_mcp_tools", return_value=[]), \
+         patch("agentic.agent.get_tools_by_names", return_value=[]):
         agent = ToolAgent()
 
         # Verify tools attribute exists
@@ -145,11 +145,11 @@ def test_tools_integration():
 @pytest.mark.asyncio
 async def test_validation_and_error_handling():
     """Test input validation and error handling."""
-    from src.agentic import Agent
+    from agentic import Agent
 
-    with patch("src.agentic.agent.StateGraph"), \
-         patch("src.agentic.agent.load_mcp_tools", return_value=[]), \
-         patch("src.agentic.agent.get_tools_by_names", return_value=[]):
+    with patch("agentic.agent.StateGraph"), \
+         patch("agentic.agent.load_mcp_tools", return_value=[]), \
+         patch("agentic.agent.get_tools_by_names", return_value=[]):
         agent = Agent()
 
         # Test input validation
@@ -169,14 +169,14 @@ async def test_validation_and_error_handling():
 
 def test_confidence_scoring():
     """Test confidence scoring functionality."""
-    from src.agentic import Agent
+    from agentic import Agent
 
     class TestAgent(Agent):
         pass
 
-    with patch("src.agentic.agent.StateGraph"), \
-         patch("src.agentic.agent.load_mcp_tools", return_value=[]), \
-         patch("src.agentic.agent.get_tools_by_names", return_value=[]):
+    with patch("agentic.agent.StateGraph"), \
+         patch("agentic.agent.load_mcp_tools", return_value=[]), \
+         patch("agentic.agent.get_tools_by_names", return_value=[]):
         agent = TestAgent()
 
         # Test confidence calculation
@@ -189,7 +189,7 @@ def test_confidence_scoring():
 
 def test_testing_utilities():
     """Test the testing utilities work correctly."""
-    from src.agentic.testing import MockLLMAgent
+    from agentic.testing import MockLLMAgent
 
     # Test MockLLMAgent
     mock_workflow = MagicMock()
@@ -201,9 +201,9 @@ def test_testing_utilities():
     
     mock_workflow.ainvoke = mock_ainvoke
 
-    with patch("src.agentic.agent.StateGraph") as mock_state_graph, \
-         patch("src.agentic.agent.load_mcp_tools", return_value=[]), \
-         patch("src.agentic.agent.get_tools_by_names", return_value=[]):
+    with patch("agentic.agent.StateGraph") as mock_state_graph, \
+         patch("agentic.agent.load_mcp_tools", return_value=[]), \
+         patch("agentic.agent.get_tools_by_names", return_value=[]):
         mock_graph_instance = MagicMock()
         mock_graph_instance.compile.return_value = mock_workflow
         mock_state_graph.return_value = mock_graph_instance
@@ -218,12 +218,12 @@ def test_testing_utilities():
 
 
 @pytest.mark.asyncio
-@patch("src.agentic.agent.get_tools_by_names", return_value=[])
-@patch("src.agentic.agent.load_mcp_tools", return_value=[])
-@patch("src.agentic.agent.StateGraph")
+@patch("agentic.agent.get_tools_by_names", return_value=[])
+@patch("agentic.agent.load_mcp_tools", return_value=[])
+@patch("agentic.agent.StateGraph")
 async def test_handler_lifecycle(mock_state_graph, mock_load_mcp_tools, mock_get_tools_by_names):
     """Test complete handler registration and execution lifecycle."""
-    from src.agentic import Agent, HandlerResponse, Message
+    from agentic import Agent, HandlerResponse, Message
 
     # Mock workflow setup
     mock_workflow = MagicMock()

@@ -22,6 +22,9 @@ class AgentState(BaseModel):
     messages: List[Message] = Field(default_factory=list)
     category: Optional[str] = None
     missing_requirements: List[str] = Field(default_factory=list)
+    confidence: Optional[float] = None
+    needs_escalation: bool = False
+    workflow_step: Optional[str] = None
     metadata: Dict[str, Any] = Field(default_factory=dict)
 
 

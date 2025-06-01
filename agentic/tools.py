@@ -95,7 +95,14 @@ async def load_mcp_tools_async(config_path: Union[str, Path] = None) -> List[Dic
 
 def load_mcp_tools(config_path: Union[str, Path] = None) -> List[Dict[str, Any]]:
     """Load all tools from MCP servers defined in config (sync wrapper)."""
-    return asyncio.run(load_mcp_tools_async(config_path))
+    try:
+        return asyncio.run(load_mcp_tools_async(config_path))
+    except RuntimeError as e:
+        if "asyncio.run() cannot be called from a running event loop" in str(e):
+            # We're already in an async context, return empty list for now
+            logging.warning("MCP tools loading skipped due to async context conflict")
+            return []
+        raise
 
 
 async def get_tools_by_names_async(tool_names: List[str], available_tools: List[Dict[str, Any]] = None) -> List[Dict[str, Any]]:
@@ -119,7 +126,14 @@ async def get_tools_by_names_async(tool_names: List[str], available_tools: List[
 
 def get_tools_by_names(tool_names: List[str], available_tools: List[Dict[str, Any]] = None) -> List[Dict[str, Any]]:
     """Filter tools by requested names (sync wrapper)."""
-    return asyncio.run(get_tools_by_names_async(tool_names, available_tools))
+    try:
+        return asyncio.run(get_tools_by_names_async(tool_names, available_tools))
+    except RuntimeError as e:
+        if "asyncio.run() cannot be called from a running event loop" in str(e):
+            # We're already in an async context, return empty list for now
+            logging.warning("Tools loading skipped due to async context conflict")
+            return []
+        raise
 
 
 def create_mcp_config_template(config_path: Union[str, Path] = None) -> Path:

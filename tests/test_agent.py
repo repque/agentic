@@ -9,8 +9,8 @@ Focus on the three critical flows:
 
 import pytest
 from unittest.mock import Mock, patch
-from src.agentic import Agent, CategoryRequirement
-from src.agentic.models import AgentState, Message, HandlerResponse
+from agentic import Agent, CategoryRequirement
+from agentic.models import AgentState, Message, HandlerResponse
 
 
 class ExampleAgent(Agent):
@@ -29,7 +29,7 @@ class ExampleAgent(Agent):
         )
 
 
-@patch("src.agentic.agent.ChatOpenAI")
+@patch("agentic.agent.ChatOpenAI")
 def test_agent_instantiation(mock_llm):
     """Test that we can create an agent without errors."""
     # Mock the LLM
@@ -44,7 +44,7 @@ def test_agent_instantiation(mock_llm):
     assert agent._workflow is not None  # Workflow should be built
 
 
-@patch("src.agentic.agent.ChatOpenAI")
+@patch("agentic.agent.ChatOpenAI")
 def test_handler_registration(mock_llm):
     """Test custom handler registration."""
     # Mock the LLM
@@ -67,9 +67,9 @@ def test_handler_registration(mock_llm):
 
 
 @pytest.mark.asyncio
-@patch("src.agentic.agent.ChatOpenAI")
-@patch("src.agentic.agent.load_mcp_tools", return_value=[])
-@patch("src.agentic.agent.get_tools_by_names", return_value=[])
+@patch("agentic.agent.ChatOpenAI")
+@patch("agentic.agent.load_mcp_tools", return_value=[])
+@patch("agentic.agent.get_tools_by_names", return_value=[])
 async def test_basic_chat(mock_tools, mock_mcp, mock_llm):
     """Test basic chat functionality with LangGraph workflow."""
     # Mock the LLM
@@ -86,7 +86,7 @@ async def test_basic_chat(mock_tools, mock_mcp, mock_llm):
     assert len(response) > 0  # Should get some response
 
 
-@patch("src.agentic.agent.ChatOpenAI")
+@patch("agentic.agent.ChatOpenAI")
 def test_framework_methods(mock_llm):
     """Test that framework methods exist and return expected types."""
     # Mock the LLM
@@ -110,9 +110,9 @@ def test_framework_methods(mock_llm):
 
 
 @pytest.mark.asyncio
-@patch("src.agentic.agent.ChatOpenAI")
-@patch("src.agentic.agent.load_mcp_tools", return_value=[])
-@patch("src.agentic.agent.get_tools_by_names", return_value=[])
+@patch("agentic.agent.ChatOpenAI")
+@patch("agentic.agent.load_mcp_tools", return_value=[])
+@patch("agentic.agent.get_tools_by_names", return_value=[])
 async def test_complete_flow(mock_tools, mock_mcp, mock_llm):
     """Test the main happy path - complete request with custom handler."""
     # Mock LLM to classify as ReviewRequest  
@@ -133,9 +133,9 @@ async def test_complete_flow(mock_tools, mock_mcp, mock_llm):
 
 
 @pytest.mark.asyncio
-@patch("src.agentic.agent.ChatOpenAI")
-@patch("src.agentic.agent.load_mcp_tools", return_value=[])
-@patch("src.agentic.agent.get_tools_by_names", return_value=[])
+@patch("agentic.agent.ChatOpenAI")
+@patch("agentic.agent.load_mcp_tools", return_value=[])
+@patch("agentic.agent.get_tools_by_names", return_value=[])
 async def test_missing_requirements(mock_tools, mock_mcp, mock_llm):
     """Test missing requirements handling."""
     # Mock LLM to classify as ReviewRequest but message lacks URL
@@ -143,6 +143,8 @@ async def test_missing_requirements(mock_tools, mock_mcp, mock_llm):
     async def mock_ainvoke(prompt):
         if "Classify" in prompt:
             return Mock(content="ReviewRequest")
+        elif "casual chat conversation" in prompt:
+            return Mock(content="What's the URL you want me to review?")
         else:
             return Mock(content="url")  # Missing URL field
     mock_llm_instance.ainvoke = mock_ainvoke
@@ -150,13 +152,15 @@ async def test_missing_requirements(mock_tools, mock_mcp, mock_llm):
 
     agent = ExampleAgent()
     response = await agent.chat("Please review my code", "user123")
-    assert "Need:" in response and "url" in response
+    assert "url" in response.lower()  # Should ask for URL in a conversational way
+    # Response should be brief and casual
+    assert len(response) < 100  # Should be concise, not verbose
 
 
 @pytest.mark.asyncio
-@patch("src.agentic.agent.ChatOpenAI")
-@patch("src.agentic.agent.load_mcp_tools", return_value=[])
-@patch("src.agentic.agent.get_tools_by_names", return_value=[])
+@patch("agentic.agent.ChatOpenAI")
+@patch("agentic.agent.load_mcp_tools", return_value=[])
+@patch("agentic.agent.get_tools_by_names", return_value=[])
 async def test_default_flow(mock_tools, mock_mcp, mock_llm):
     """Test fallback to default flow."""
     # Mock LLM to classify as "default" and provide response

@@ -1,6 +1,6 @@
 [build-system]
-requires = ["hatchling"]
-build-backend = "hatchling.build"
+requires = ["setuptools>=45", "wheel"]
+build-backend = "setuptools.build_meta"
 
 [project]
 name = "agentic"
@@ -14,6 +14,7 @@ dependencies = [
     "pydantic>=2.0",
     "langchain-core",
     "langchain-openai",
+    "click>=8.0",
 ]
 
 [project.optional-dependencies]
@@ -39,3 +40,10 @@ target-version = ['py39']
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 addopts = "-v"
+
+[project.scripts]
+agentic = "agentic.cli:cli"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["agentic*"]
