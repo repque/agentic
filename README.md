@@ -5,7 +5,12 @@ Build AI agents with 5 simple methods instead of 100+ lines of complex code.
 ## Quick Start
 
 ```bash
-pip install agentic
+# Clone the repository
+git clone https://github.com/repque/agentic.git
+cd agentic
+
+# Install in development mode
+pip install -e .
 ```
 
 ```python
