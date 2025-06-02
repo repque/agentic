@@ -91,12 +91,12 @@ agentic list-examples
 ## That's It!
 
 The framework handles:
-- ✅ Message routing and classification
-- ✅ Conversation memory and context
-- ✅ Knowledge integration and search
-- ✅ Requirements validation
-- ✅ Error handling and escalation
-- ✅ Multi-user conversations
+- Message routing and classification
+- Conversation memory and context
+- Knowledge integration and search
+- Requirements validation
+- Error handling and escalation
+- Multi-user conversations
 
 You focus on your business logic.
 

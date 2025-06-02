@@ -67,7 +67,7 @@ knowledge = km.retrieve_for_query("How do I reset password?", max_results=3)
 
 ## Tips
 
-✅ **Keep it simple**: Start with a few key documents  
-✅ **Use clear headings**: "Payment Methods", "Refund Policy"  
-✅ **Avoid huge files**: Break into focused topics  
-✅ **Test your knowledge**: Use `agentic chat` to see what gets retrieved
+- **Keep it simple**: Start with a few key documents  
+- **Use clear headings**: "Payment Methods", "Refund Policy"  
+- **Avoid huge files**: Break into focused topics  
+- **Test your knowledge**: Use `agentic chat` to see what gets retrieved

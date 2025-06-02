@@ -76,7 +76,7 @@ class RestaurantBot(Agent):
 
 ## Tips
 
-✅ **Be specific**: Include domain context in your prompts  
-✅ **Test changes**: Use `agentic chat` to see how it behaves  
-✅ **Keep it simple**: Don't over-engineer the prompts  
-✅ **Match your categories**: Ensure prompt categories match your `get_classification_categories()`
+- **Be specific**: Include domain context in your prompts  
+- **Test changes**: Use `agentic chat` to see how it behaves  
+- **Keep it simple**: Don't over-engineer the prompts  
+- **Match your categories**: Ensure prompt categories match your `get_classification_categories()`
