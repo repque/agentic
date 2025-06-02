@@ -90,17 +90,17 @@ agentic list-examples
 
 ## Handlers vs Tools vs Knowledge
 
-**Custom Handlers** = Your business logic
-- You write the code that executes
-- Direct control over what happens
-- Returns specific responses
-- Example: Create database records, call your APIs
+**Custom Handlers** = Branch from main execution path
+- Take full control for specific categories
+- Skip normal AI response generation
+- Return exactly what you want
+- Example: "PlaceOrder" → create order, return confirmation
 
-**Tools** = AI-accessible utilities  
+**Tools** = Encapsulated capabilities for AI
+- API calls, database access, sending emails
 - AI decides when and how to use them
-- AI can combine multiple tools
-- More flexible but less predictable
-- Example: File operations, web search, calculators
+- AI can combine multiple tools in responses
+- Example: AI uses email tool + database tool to answer "Send me my order status"
 
 **Knowledge** = Information for AI responses
 - AI uses context to answer questions
@@ -111,25 +111,29 @@ agentic list-examples
 ```python
 class OrderBot(Agent):
     def __init__(self):
-        # Tools: AI can use these when it thinks they're helpful
-        super().__init__(tools=["file_search", "calculator", "web_search"])
+        # Tools: AI can use database, email, etc. in its responses
+        super().__init__(tools=["database_lookup", "send_email", "calculator"])
     
     def get_knowledge(self):
         # Knowledge: AI always has access to answer questions
         return ["./product_catalog.md", "./shipping_policy.md"]
     
     def handle_place_order(self, state):
-        # Handler: You control exactly what happens
+        # Handler: Branches from main path, takes full control
         order = create_order_from_message(state.messages[-1].content)
-        send_confirmation_email(order.customer_email)
         return HandlerResponse(messages=[
-            Message(role="assistant", content=f"Order {order.id} created and confirmation sent!")
+            Message(role="assistant", content=f"Order {order.id} created! You'll receive email confirmation.")
         ])
+        # Note: Skips normal AI response, returns exactly this message
     
-    # AI automatically:
-    # - Uses knowledge to answer "What's your return policy?"
-    # - Uses calculator tool for "What's 15% tip on $67?"
-    # - Calls your handler for "I want to place an order"
+    # User: "What's my order status for #12345?"
+    # → AI uses database_lookup tool + generates helpful response
+    
+    # User: "I want to place an order" 
+    # → Handler takes over, bypasses AI, returns specific confirmation
+    
+    # User: "What's your return policy?"
+    # → AI uses knowledge to generate informed response
 ```
 
 ## That's It!
