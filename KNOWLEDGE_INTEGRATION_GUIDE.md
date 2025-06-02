@@ -205,91 +205,52 @@ score = len(overlap)  # 4
 - Structure content logically
 - Avoid very long files
 
-## 🔧 Framework Integration
+## 🔧 Direct Usage (No Framework)
 
-### Using with Other Frameworks
-
-The KnowledgeManager is designed to work with any GenAI framework using the same simple API:
-
-#### LangChain Integration
+The KnowledgeManager works independently of any AI framework. Use it directly in your applications:
 
 ```python
 from agentic.knowledge import create_default_knowledge_manager
 
-km = create_default_knowledge_manager()
-km.load_sources(["./docs/"])
-
-# Get knowledge for LangChain prompts - same API for any framework
-query = "How do I reset my password?"
-knowledge = km.retrieve_for_query(query, max_results=3)
-
-# Use in LangChain chain
-from langchain.prompts import PromptTemplate
-prompt = PromptTemplate(
-    template="Context: {knowledge}\nQuestion: {query}\nAnswer:",
-    input_variables=["knowledge", "query"]
-)
-```
-
-#### LlamaIndex Integration
-
-```python
-# Get all content for LlamaIndex documents
-all_content = [c['content'] for c in km.loaded_content if c.get('content') and not c.get('error')]
-
-from llama_index import VectorStoreIndex, Document
-documents = [Document(text=content) for content in all_content]
-index = VectorStoreIndex.from_documents(documents)
-```
-
-#### OpenAI Assistant API
-
-```python
-# Same API works for OpenAI
-knowledge = km.retrieve_for_query(query, max_results=5)
-
-import openai
-response = openai.ChatCompletion.create(
-    model="gpt-4",
-    messages=[
-        {"role": "system", "content": f"Knowledge: {knowledge}"},
-        {"role": "user", "content": query}
-    ]
-)
-```
-
-#### Any Framework
-
-```python
-# The same API works everywhere - no framework-specific code needed
-km = create_default_knowledge_manager()
-km.load_sources(["./docs/"])
-
-# Universal method that works with any framework
-knowledge = km.retrieve_for_query("your query here", max_results=3)
-```
-
-### Direct Usage (Standalone)
-
-```python
-from agentic.knowledge import create_default_knowledge_manager
-
-# Create knowledge manager
+# Create knowledge manager with semantic search
 km = create_default_knowledge_manager()
 
-# Load sources
+# Load knowledge sources
 sources = ["./policies/", "./faq.md", "https://api.docs.com"]
 stats = km.load_sources(sources)
 print(f"Loaded {stats['loaded_successfully']}/{stats['total_sources']} sources")
 
-# Query knowledge
+# Query knowledge using semantic similarity
 query = "What is the refund policy?"
 relevant = km.retrieve_for_query(query, max_results=2)
 print(f"Relevant knowledge: {relevant}")
 
-# Get summary
+# Get summary of all available knowledge
 summary = km.get_all_content_summary()
 print(f"Available knowledge: {summary}")
+```
+
+### How It Works
+
+1. **Loading**: Sources are processed by appropriate loaders (files, URLs)
+2. **Indexing**: Content is chunked and converted to embeddings 
+3. **Storage**: Embeddings stored in Chroma vector database
+4. **Retrieval**: Queries converted to embeddings and matched via semantic similarity
+5. **Results**: Most relevant content returned as plain text
+
+### Integration with Any AI System
+
+```python
+# Works with any LLM or AI framework
+knowledge = km.retrieve_for_query("user question", max_results=3)
+
+# Use with your preferred AI system:
+# - Add to OpenAI messages
+# - Include in LangChain prompts  
+# - Pass to local models
+# - Use in custom applications
+
+response = your_ai_system(f"Context: {knowledge}\nQuestion: {user_query}")
 ```
 
 ## ⚙️ Configuration
