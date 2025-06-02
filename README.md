@@ -88,40 +88,48 @@ agentic chat --example helpdesk_agent
 agentic list-examples
 ```
 
-## When to Use Custom Handlers
+## Handlers vs Tools vs Knowledge
 
-**Use handlers when you need to:**
-- Call external APIs (create tickets, send emails, etc.)
-- Access databases (look up accounts, save data)
-- Implement business logic (calculations, workflows)
-- Return structured responses
+**Custom Handlers** = Your business logic
+- You write the code that executes
+- Direct control over what happens
+- Returns specific responses
+- Example: Create database records, call your APIs
 
-**Don't use handlers when you need to:**
-- Answer questions from documents (use `get_knowledge()` instead)
-- Have conversations (framework handles this automatically)
-- Route messages (framework does classification automatically)
+**Tools** = AI-accessible utilities  
+- AI decides when and how to use them
+- AI can combine multiple tools
+- More flexible but less predictable
+- Example: File operations, web search, calculators
+
+**Knowledge** = Information for AI responses
+- AI uses context to answer questions
+- No code execution, just enhanced responses
+- Best for Q&A and documentation
+- Example: Company policies, product info
 
 ```python
 class OrderBot(Agent):
-    def get_classification_categories(self):
-        return ["CheckOrder", "PlaceOrder", "GeneralQuestion"]
+    def __init__(self):
+        # Tools: AI can use these when it thinks they're helpful
+        super().__init__(tools=["file_search", "calculator", "web_search"])
     
-    def handle_check_order(self, state):
-        # Business logic: look up order in database
-        order_id = extract_order_id(state.messages[-1].content)
-        order = database.get_order(order_id)
-        return HandlerResponse(messages=[
-            Message(role="assistant", content=f"Order {order_id} status: {order.status}")
-        ])
+    def get_knowledge(self):
+        # Knowledge: AI always has access to answer questions
+        return ["./product_catalog.md", "./shipping_policy.md"]
     
     def handle_place_order(self, state):
-        # Business logic: create new order
+        # Handler: You control exactly what happens
         order = create_order_from_message(state.messages[-1].content)
+        send_confirmation_email(order.customer_email)
         return HandlerResponse(messages=[
-            Message(role="assistant", content=f"Order created! ID: {order.id}")
+            Message(role="assistant", content=f"Order {order.id} created and confirmation sent!")
         ])
     
-    # No handler for GeneralQuestion - uses knowledge automatically
+    # AI automatically:
+    # - Uses knowledge to answer "What's your return policy?"
+    # - Uses calculator tool for "What's 15% tip on $67?"
+    # - Calls your handler for "I want to place an order"
 ```
 
 ## That's It!
