@@ -88,6 +88,42 @@ agentic chat --example helpdesk_agent
 agentic list-examples
 ```
 
+## When to Use Custom Handlers
+
+**Use handlers when you need to:**
+- Call external APIs (create tickets, send emails, etc.)
+- Access databases (look up accounts, save data)
+- Implement business logic (calculations, workflows)
+- Return structured responses
+
+**Don't use handlers when you need to:**
+- Answer questions from documents (use `get_knowledge()` instead)
+- Have conversations (framework handles this automatically)
+- Route messages (framework does classification automatically)
+
+```python
+class OrderBot(Agent):
+    def get_classification_categories(self):
+        return ["CheckOrder", "PlaceOrder", "GeneralQuestion"]
+    
+    def handle_check_order(self, state):
+        # Business logic: look up order in database
+        order_id = extract_order_id(state.messages[-1].content)
+        order = database.get_order(order_id)
+        return HandlerResponse(messages=[
+            Message(role="assistant", content=f"Order {order_id} status: {order.status}")
+        ])
+    
+    def handle_place_order(self, state):
+        # Business logic: create new order
+        order = create_order_from_message(state.messages[-1].content)
+        return HandlerResponse(messages=[
+            Message(role="assistant", content=f"Order created! ID: {order.id}")
+        ])
+    
+    # No handler for GeneralQuestion - uses knowledge automatically
+```
+
 ## That's It!
 
 The framework handles:
